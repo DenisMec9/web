@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import uploadRoute from "./routes/upload";
 
 import { loadTextFiles } from "./ingest/loader";
 import { chunkText } from "./ingest/chunker";
@@ -13,6 +14,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use("/upload", uploadRoute);
+
+const MIN_SCORE = 0.25;
+
 async function ingestDocs() {
   const docs = loadTextFiles("docs");
   const index: StoredChunk[] = [];
@@ -22,7 +27,13 @@ async function ingestDocs() {
     for (let i = 0; i < chunks.length; i++) {
       const text = chunks[i];
       const embedding = await embed(text);
-      index.push({ id: `${d.id}-${i}`, source: d.source, text, embedding });
+
+      index.push({
+        id: `${d.id}-${i}`,
+        source: d.source,
+        text,
+        embedding
+      });
     }
   }
 
@@ -37,7 +48,10 @@ async function retrieve(question: string, topK = 3) {
   const qEmb = await embed(question);
 
   const ranked = index
-    .map(item => ({ item, score: cosineSimilarity(qEmb, item.embedding) }))
+    .map(item => ({
+      item,
+      score: cosineSimilarity(qEmb, item.embedding)
+    }))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 
@@ -53,24 +67,52 @@ app.post("/ingest", async (_req, res) => {
     const result = await ingestDocs();
     res.json({ ok: true, ...result });
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e?.message ?? "erro" });
+    res.status(500).json({
+      ok: false,
+      error: e?.message ?? "Erro ao indexar documentos"
+    });
   }
 });
 
 app.post("/ask", async (req, res) => {
   try {
     const question = String(req.body?.question ?? "").trim();
-    if (!question) return res.status(400).json({ ok: false, error: "question vazia" });
+
+    if (!question) {
+      return res.status(400).json({
+        ok: false,
+        error: "Pergunta vazia"
+      });
+    }
 
     const ctx = await retrieve(question, 3);
     const bestScore = ctx[0]?.score ?? 0;
 
-    if (bestScore < 0.25) {
-      return res.json({ ok: true, answer: "Não encontrei essa informação nos documentos.", sources: [] });
+    if (ctx.length === 0 || bestScore < MIN_SCORE) {
+      return res.json({
+        ok: true,
+        answer:
+          "Eu só consigo responder com base nos documentos carregados. " +
+          "Não encontrei contexto suficiente nesses documentos para responder essa pergunta.",
+        sources: [],
+        meta: {
+          bestScore,
+          minScore: MIN_SCORE
+        }
+      });
     }
 
-    const docs = ctx.map(c => `[Fonte: ${c.source} | score: ${c.score.toFixed(3)}]\n${c.text}`);
-    const prompt = buildPrompt(question, docs);
+    const docs = ctx.map(
+      c => `[Fonte: ${c.source} | score: ${c.score.toFixed(3)}]\n${c.text}`
+    );
+
+    const guardrail =
+      "REGRA: Responda APENAS com base no conteúdo das FONTES abaixo. " +
+      "Não use conhecimento externo. " +
+      "Não invente informações. " +
+      "Se a resposta não estiver claramente presente nas fontes, diga que não é possível responder.\n\n";
+
+    const prompt = guardrail + buildPrompt(question, docs);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -81,11 +123,24 @@ app.post("/ask", async (req, res) => {
     res.json({
       ok: true,
       answer: completion.choices[0].message.content ?? "",
-      sources: ctx.map(c => ({ source: c.source, score: c.score }))
+      sources: ctx.map(c => ({
+        source: c.source,
+        score: c.score,
+        preview: c.text.slice(0, 180) + (c.text.length > 180 ? "..." : "")
+      })),
+      meta: {
+        bestScore,
+        minScore: MIN_SCORE
+      }
     });
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e?.message ?? "erro" });
+    res.status(500).json({
+      ok: false,
+      error: e?.message ?? "Erro ao processar pergunta"
+    });
   }
 });
 
-app.listen(3001, () => console.log("✅ Backend API: http://localhost:3001"));
+app.listen(3001, () => {
+  console.log("✅ Backend API rodando em http://localhost:3001");
+});
