@@ -1,36 +1,178 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+🤖 FAQ Bot com RAG (Node.js + TypeScript + Next.js)
 
-## Getting Started
+Um FAQ Bot inteligente que utiliza o conceito de **RAG (Retrieval-Augmented Generation)** para responder perguntas **exclusivamente com base em documentos locais**.  
+O projeto conta com backend em Node.js, integração com OpenAI, armazenamento vetorial local e uma **interface web estilo chat** para interação em tempo real.
 
-First, run the development server:
+O foco do projeto é demonstrar, de forma prática, a construção de um sistema de RAG **sem frameworks prontos como LangChain**, priorizando entendimento de arquitetura, embeddings, similaridade semântica e construção manual de prompts.
 
+---
+
+🚀 Funcionalidades
+
+- Indexação de documentos locais (`.txt`)
+- Geração de embeddings utilizando OpenAI
+- Busca por similaridade semântica (Cosine Similarity)
+- Recuperação de contexto relevante (RAG)
+- Construção manual de prompt com contexto recuperado
+- Interface web estilo chat
+- Reindexação de documentos via interface
+- Interface CLI para uso via terminal
+- Separação clara entre backend e frontend
+- Gerenciamento seguro de variáveis de ambiente
+
+---
+
+🛠️ Tecnologias Utilizadas
+
+Backend:
+- Node.js
+- TypeScript
+- Express
+- OpenAI API
+- Implementação manual de RAG
+
+Frontend:
+- Next.js (App Router)
+- React
+- Tailwind CSS
+
+---
+
+📦 Pré-requisitos
+
+Antes de começar, você precisará de:
+
+- Node.js instalado (versão 18+ recomendada)
+- Uma API Key válida da OpenAI
+
+---
+
+⚙️ Instalação e Configuração
+
+Siga os passos abaixo para rodar o projeto localmente.
+
+1. Clone o repositório
 ```bash
+git clone https://github.com/SEU_USUARIO/faq-bot-rag.git
+cd faq-bot-rag
+Instale as dependências do backend
+
+bash
+Copiar código
+npm install
+Configure as variáveis de ambiente
+Crie um arquivo .env na raiz do projeto e adicione sua chave da OpenAI:
+
+env
+Copiar código
+OPENAI_API_KEY=sk-sua-chave-aqui
+⚠️ O arquivo .env não deve ser versionado.
+
+▶️ Como rodar o projeto
+
+Rodar o backend (API)
+
+bash
+Copiar código
+npx ts-node src/server.ts
+A API ficará disponível em:
+
+arduino
+Copiar código
+http://localhost:3001
+Rodar o frontend (interface web)
+
+bash
+Copiar código
+cd web
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+A aplicação ficará disponível em:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+arduino
+Copiar código
+http://localhost:3000
+💬 Como usar
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Adicione arquivos .txt na pasta docs/
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Acesse a interface web
 
-## Learn More
+Clique no botão Reindexar
 
-To learn more about Next.js, take a look at the following resources:
+Faça perguntas relacionadas ao conteúdo dos documentos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Exemplo:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+arduino
+Copiar código
+Qual o horário de gravação do podcast?
+🖥️ Uso via Terminal (CLI)
 
-## Deploy on Vercel
+Indexar documentos:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+bash
+Copiar código
+npx ts-node src/cli.ts ingest
+Fazer uma pergunta:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+bash
+Copiar código
+npx ts-node src/cli.ts ask "Sua pergunta aqui"
+📁 Estrutura do Projeto
+
+php
+Copiar código
+faq-bot/
+├── src/                    # Backend (Node.js + TypeScript)
+│   ├── ingest/             # Leitura e chunking dos documentos
+│   ├── llm/                # Integração com OpenAI
+│   ├── rag/                # Similaridade e armazenamento vetorial
+│   ├── cli.ts              # Interface via terminal
+│   └── server.ts           # API HTTP (Express)
+│
+├── docs/                   # Documentos utilizados pelo bot
+├── data/                   # Índice vetorial local (ignorado no git)
+│
+├── web/                    # Frontend (Next.js)
+│   ├── app/
+│   └── public/
+│
+├── .env.example
+├── .gitignore
+├── package.json
+├── tsconfig.json
+└── README.md
+🧠 Como funciona (Deep Dive)
+
+O funcionamento do bot segue o fluxo clássico de RAG:
+
+Os documentos são carregados e divididos em pequenos blocos de texto (chunks)
+
+Cada chunk é convertido em embedding
+
+As embeddings são armazenadas localmente
+
+A pergunta do usuário também é convertida em embedding
+
+É realizada uma busca por similaridade semântica
+
+Os trechos mais relevantes são selecionados como contexto
+
+Um prompt é construído manualmente com esse contexto
+
+A resposta é gerada pelo modelo de linguagem com base apenas nos dados recuperados
+
+💡 Por que RAG manual?
+
+A implementação manual do RAG permite:
+
+Entendimento profundo de embeddings
+
+Controle total da lógica de recuperação
+
+Evitar dependência de abstrações prontas
+
+Facilitar evolução futura do projeto
+
+
