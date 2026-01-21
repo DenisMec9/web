@@ -1,23 +1,61 @@
-# env
-.env
-.env.*
-
-# node
+# ===============================
+# Node / JS
+# ===============================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# build
-dist/
+# ===============================
+# Next.js
+# ===============================
 .next/
 out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
 
-# local data (RAG index)
+# ===============================
+# Yarn / PnP
+# ===============================
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ===============================
+# Environment variables
+# ===============================
+.env
+.env.*
+.env.local
+.env.*.local
+
+# ===============================
+# Uploads / RAG data
+# ===============================
+uploads/
 data/
 *.json
 
-# OS
+# ===============================
+# Coverage / Tests
+# ===============================
+coverage/
+
+# ===============================
+# Vercel
+# ===============================
+.vercel
+
+# ===============================
+# OS / Misc
+# ===============================
 .DS_Store
 Thumbs.db
-
+*.pem
