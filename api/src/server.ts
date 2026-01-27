@@ -1,29 +1,36 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import uploadRoute from "./routes/upload";
 
-import { loadTextFiles } from "./ingest/loader";
-import { chunkText } from "./ingest/chunker";
-import { embed, openai } from "./llm/openai";
-import { buildPrompt } from "./llm/prompt";
-import { cosineSimilarity } from "./rag/similarity";
-import { loadIndex, saveIndex, StoredChunk } from "./rag/localStore";
+// Importação das rotas
+import uploadRoute from "./routes/upload";  
+// IMPORTANTE: O nome aqui deve ser loadFiles para bater com o loader.ts
+import { loadFiles } from "./ingest/loader"; 
+import { chunkText } from "./ingest/chunker";  
+import { embed, openai } from "./llm/openai";  
+import { buildPrompt } from "./llm/prompt"; 
+import { cosineSimilarity } from "./rag/similarity";  
+import { loadIndex, saveIndex, StoredChunk } from "./rag/localStore"; 
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/upload", uploadRoute);
-
 const MIN_SCORE = 0.25;
 
+app.use("/upload", uploadRoute);
+
+/**
+ * Indexa documentos da pasta /docs (Suporta .txt e .pdf)
+ */
 async function ingestDocs() {
-  const docs = loadTextFiles("docs");
+  // Agora usamos 'await' e o nome correto da função
+  const docs = await loadFiles("docs"); 
   const index: StoredChunk[] = [];
 
   for (const d of docs) {
     const chunks = chunkText(d.text);
+
     for (let i = 0; i < chunks.length; i++) {
       const text = chunks[i];
       const embedding = await embed(text);
@@ -41,6 +48,9 @@ async function ingestDocs() {
   return { chunks: index.length };
 }
 
+/**
+ * Recupera os trechos mais relevantes com base na similaridade
+ */
 async function retrieve(question: string, topK = 3) {
   const index = loadIndex();
   if (index.length === 0) return [];
@@ -79,10 +89,7 @@ app.post("/ask", async (req, res) => {
     const question = String(req.body?.question ?? "").trim();
 
     if (!question) {
-      return res.status(400).json({
-        ok: false,
-        error: "Pergunta vazia"
-      });
+      return res.status(400).json({ ok: false, error: "Pergunta vazia" });
     }
 
     const ctx = await retrieve(question, 3);
@@ -91,28 +98,14 @@ app.post("/ask", async (req, res) => {
     if (ctx.length === 0 || bestScore < MIN_SCORE) {
       return res.json({
         ok: true,
-        answer:
-          "Eu só consigo responder com base nos documentos carregados. " +
-          "Não encontrei contexto suficiente nesses documentos para responder essa pergunta.",
+        answer: "Eu só consigo responder com base nos documentos carregados.",
         sources: [],
-        meta: {
-          bestScore,
-          minScore: MIN_SCORE
-        }
+        meta: { bestScore, minScore: MIN_SCORE }
       });
     }
 
-    const docs = ctx.map(
-      c => `[Fonte: ${c.source} | score: ${c.score.toFixed(3)}]\n${c.text}`
-    );
-
-    const guardrail =
-      "REGRA: Responda APENAS com base no conteúdo das FONTES abaixo. " +
-      "Não use conhecimento externo. " +
-      "Não invente informações. " +
-      "Se a resposta não estiver claramente presente nas fontes, diga que não é possível responder.\n\n";
-
-    const prompt = guardrail + buildPrompt(question, docs);
+    const docs = ctx.map(c => `[Fonte: ${c.source} | score: ${c.score.toFixed(3)}]\n${c.text}`);
+    const prompt = buildPrompt(question, docs);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -126,18 +119,12 @@ app.post("/ask", async (req, res) => {
       sources: ctx.map(c => ({
         source: c.source,
         score: c.score,
-        preview: c.text.slice(0, 180) + (c.text.length > 180 ? "..." : "")
+        preview: c.text.slice(0, 180) + "..."
       })),
-      meta: {
-        bestScore,
-        minScore: MIN_SCORE
-      }
+      meta: { bestScore, minScore: MIN_SCORE }
     });
   } catch (e: any) {
-    res.status(500).json({
-      ok: false,
-      error: e?.message ?? "Erro ao processar pergunta"
-    });
+    res.status(500).json({ ok: false, error: "Erro ao processar pergunta" });
   }
 });
 

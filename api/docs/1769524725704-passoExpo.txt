@@ -1,0 +1,16 @@
+No terminal dentro do projeto: 
+
+npx expo start --tunnel
+
+npx expo login
+npm install -g eas-cli
+npx eas init 
+
+npx eas update --branch production --message "primeira versão"
+
+Agora ir na plataforma web, entrar no projeto, e na sidebar Clicar em Hosting -> Clicar em Confirm
+
+De volta ao cli
+npx expo export --platform web
+eas deploy
+eas deploy --prod
